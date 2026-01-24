@@ -5,16 +5,19 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/anil-vinnakoti/newsapi/internal/logger"
 	"github.com/anil-vinnakoti/newsapi/internal/router"
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
-
-	logger.Info("server starting on port 8080")
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
 	routesHandler := router.New()
-	if err := http.ListenAndServe(":8080", routesHandler); err != nil {
-		logger.Error("failed to start the server:", "error", err)
+	wrappedRoutesHandler := logger.AddLoggerMiddleWare(log, logger.LoggerMiddleware(routesHandler))
+
+	log.Info("server starting on port 8080")
+
+	if err := http.ListenAndServe(":8080", wrappedRoutesHandler); err != nil {
+		log.Error("failed to start the server:", "error", err)
 	}
 }
