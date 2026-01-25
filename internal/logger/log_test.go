@@ -9,7 +9,7 @@ import (
 	"github.com/anil-vinnakoti/newsapi/internal/logger"
 )
 
-func Test_CtxWithLogger(t *testing.T) {
+func Test_AddLoggerContextToParentContext(t *testing.T) {
 	testCases := []struct {
 		name           string
 		ctx            context.Context
@@ -33,7 +33,7 @@ func Test_CtxWithLogger(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			ctx := logger.CtxWithLogger(testCase.ctx, testCase.logger)
+			ctx := logger.AddLoggerContextToParentContext(testCase.ctx, testCase.logger)
 
 			_, ok := ctx.Value(logger.CtxKey{}).(*slog.Logger)
 			if testCase.expectedLogger != ok {
@@ -43,7 +43,7 @@ func Test_CtxWithLogger(t *testing.T) {
 	}
 }
 
-func Test_FromContext(t *testing.T) {
+func Test_GetLoggerFromContext(t *testing.T) {
 	testCases := []struct {
 		name           string
 		ctx            context.Context
@@ -62,7 +62,7 @@ func Test_FromContext(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			logger := logger.FromContext(testCase.ctx)
+			logger := logger.GetLoggerFromContext(testCase.ctx)
 
 			if testCase.expectedLogger && logger == nil {
 				t.Errorf("expected: %v, recieved: %v", testCase.expectedLogger, logger)

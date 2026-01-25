@@ -10,7 +10,7 @@ import (
 type CtxKey struct {
 }
 
-func CtxWithLogger(ctx context.Context, logger *slog.Logger) context.Context {
+func AddLoggerContextToParentContext(ctx context.Context, logger *slog.Logger) context.Context {
 	if logger == nil {
 		return ctx
 	}
@@ -23,7 +23,7 @@ func CtxWithLogger(ctx context.Context, logger *slog.Logger) context.Context {
 
 }
 
-func FromContext(ctx context.Context) *slog.Logger {
+func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	if logger, ok := ctx.Value(CtxKey{}).(*slog.Logger); ok {
 		return logger
 	}
@@ -33,7 +33,7 @@ func FromContext(ctx context.Context) *slog.Logger {
 
 func AddLoggerMiddleWare(logger *slog.Logger, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		loggerCtx := CtxWithLogger(r.Context(), logger)
+		loggerCtx := AddLoggerContextToParentContext(r.Context(), logger)
 		r = r.Clone(loggerCtx)
 		next.ServeHTTP(w, r)
 	}
@@ -41,7 +41,7 @@ func AddLoggerMiddleWare(logger *slog.Logger, next http.HandlerFunc) http.Handle
 
 func LoggerMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := FromContext(r.Context())
+		l := GetLoggerFromContext(r.Context())
 		l.Info("request", "path", r.URL.String())
 		next.ServeHTTP(w, r)
 	}
