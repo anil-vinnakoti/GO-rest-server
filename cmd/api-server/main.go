@@ -12,7 +12,7 @@ import (
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
-	routesHandler := router.New()
+	routesHandler := router.New(nil)
 	wrappedRoutesHandler := logger.AddLoggerMiddleWare(log, logger.LoggerMiddleware(routesHandler))
 
 	log.Info("server starting on port 8080")
