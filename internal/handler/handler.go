@@ -5,24 +5,25 @@ import (
 	"net/http"
 
 	"github.com/anil-vinnakoti/newsapi/internal/logger"
+	"github.com/anil-vinnakoti/newsapi/internal/store"
 	"github.com/google/uuid"
 )
 
 type NewsStorer interface {
 	// Create news from post request body
-	Create(NewsPostRequestBody) (NewsPostRequestBody, error)
+	Create(store.News) (store.News, error)
 
 	// FindByID news by its ID
-	FindByID(uuid.UUID) (NewsPostRequestBody, error)
+	FindByID(uuid.UUID) (store.News, error)
 
 	// FindAll returns all news in the store
-	FindAll() ([]NewsPostRequestBody, error)
+	FindAll() ([]store.News, error)
 
 	// DeleteByID deletes a news item by its ID
 	DeleteByID(uuid.UUID) error
 
 	// UpdateByID updates a news resource by its ID
-	UpdateByID(NewsPostRequestBody) error
+	UpdateByID(store.News) error
 }
 
 func GetAllNews(ns NewsStorer) http.HandlerFunc {
@@ -86,14 +87,15 @@ func PostNews(ns NewsStorer) http.HandlerFunc {
 			return
 		}
 
-		if err := newsRequestBody.Validate(); err != nil {
+		n, err := newsRequestBody.Validate()
+		if err != nil {
 			logger.Error("request validation failed", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
 			return
 		}
 
-		if _, err := ns.Create(newsRequestBody); err != nil {
+		if _, err := ns.Create(n); err != nil {
 			logger.Error("error creating news", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -114,14 +116,15 @@ func UpdateNewsByID(ns NewsStorer) http.HandlerFunc {
 			return
 		}
 
-		if err := newsRequestBody.Validate(); err != nil {
+		n, err := newsRequestBody.Validate()
+		if err != nil {
 			logger.Info("request validation failed", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
 			return
 		}
 
-		if err := ns.UpdateByID(newsRequestBody); err != nil {
+		if err := ns.UpdateByID(n); err != nil {
 			logger.Error("error updating news", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -153,5 +156,5 @@ func DeleteNewsByID(ns NewsStorer) http.HandlerFunc {
 }
 
 type AllNewsResponse struct {
-	News []NewsPostRequestBody `json:"news"`
+	News []store.News `json:"news"`
 }

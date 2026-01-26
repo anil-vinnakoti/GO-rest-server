@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/anil-vinnakoti/newsapi/internal/handler"
+	"github.com/anil-vinnakoti/newsapi/internal/store"
 	"github.com/google/uuid"
 )
 
@@ -288,21 +289,21 @@ type mockNewsStore struct {
 	errState bool
 }
 
-func (m mockNewsStore) Create(handler.NewsPostRequestBody) (news handler.NewsPostRequestBody, err error) {
+func (m mockNewsStore) Create(store.News) (news store.News, err error) {
 	if m.errState {
 		return news, errors.New("some error")
 	}
 	return news, nil
 }
 
-func (m mockNewsStore) FindByID(_ uuid.UUID) (news handler.NewsPostRequestBody, err error) {
+func (m mockNewsStore) FindByID(_ uuid.UUID) (news store.News, err error) {
 	if m.errState {
 		return news, errors.New("some error")
 	}
 	return news, nil
 }
 
-func (m mockNewsStore) FindAll() (news []handler.NewsPostRequestBody, err error) {
+func (m mockNewsStore) FindAll() (news []store.News, err error) {
 	if m.errState {
 		return news, errors.New("some error")
 	}
@@ -316,7 +317,7 @@ func (m mockNewsStore) DeleteByID(_ uuid.UUID) error {
 	return nil
 }
 
-func (m mockNewsStore) UpdateByID(_ handler.NewsPostRequestBody) error {
+func (m mockNewsStore) UpdateByID(_ store.News) error {
 	if m.errState {
 		return errors.New("some error")
 	}
