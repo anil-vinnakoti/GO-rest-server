@@ -9,7 +9,7 @@ import (
 
 type News struct {
 	ID        uuid.UUID `json:"id"`
-	Authod    string    `json:"author"`
+	Author    string    `json:"author"`
 	Title     string    `json:"title"`
 	Summary   string    `json:"summary"`
 	Content   string    `json:"content"`

@@ -31,12 +31,18 @@ func (n NewsPostRequestBody) Validate() (news store.News, errs error) {
 	if n.Summary == "" {
 		errs = errors.Join(errs, fmt.Errorf("summary is empty: %s", n.Summary))
 	}
+	if n.Content == "" {
+		errs = errors.Join(errs, fmt.Errorf("content is empty"))
+	}
 
 	t, err := time.Parse(time.RFC3339, n.CreatedAt)
 	if err != nil {
 		errs = errors.Join(errs, err)
 	}
 
+	if n.Source == "" {
+		errs = errors.Join(errs, fmt.Errorf("source is empty: %s", n.Source))
+	}
 	url, err := url.Parse(n.Source)
 	if err != nil {
 		errs = errors.Join(errs, err)
@@ -50,8 +56,9 @@ func (n NewsPostRequestBody) Validate() (news store.News, errs error) {
 	}
 	return store.News{
 		ID:        n.ID,
-		Authod:    n.Author,
+		Author:    n.Author,
 		Title:     n.Author,
+		Content:   n.Content,
 		Summary:   n.Summary,
 		CreatedAt: t,
 		Source:    *url,
