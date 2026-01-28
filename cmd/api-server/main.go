@@ -6,15 +6,30 @@ import (
 	"os"
 
 	"github.com/anil-vinnakoti/newsapi/internal/logger"
+	"github.com/anil-vinnakoti/newsapi/internal/news"
+	"github.com/anil-vinnakoti/newsapi/internal/postgres"
 	"github.com/anil-vinnakoti/newsapi/internal/router"
-	"github.com/anil-vinnakoti/newsapi/internal/store"
 )
 
 func main() {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}))
 
-	routesHandler := router.New(store.New())
-	wrappedRoutesHandler := logger.AddLoggerMiddleWare(log, logger.LoggerMiddleware(routesHandler))
+	db, err := postgres.NewDB(&postgres.Config{
+		Host:     os.Getenv("DATABASE_HOST"),
+		DBName:   os.Getenv("DATABASE_NAME"),
+		Password: os.Getenv("DATABASE_PASSWORD"),
+		User:     os.Getenv("DATABASE_USER"),
+		Port:     os.Getenv("DATABASE_PORT"),
+		SSLMode:  "disable",
+	})
+	if err != nil {
+		log.Error("db error", "err", err)
+		os.Exit(1)
+	}
+	newsStore := news.NewStore(db)
+
+	r := router.New(newsStore)
+	wrappedRoutesHandler := logger.AddLoggerMiddleWare(log, logger.LoggerMiddleware(r))
 
 	log.Info("server starting on port 8080")
 

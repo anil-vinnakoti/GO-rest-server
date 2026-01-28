@@ -73,7 +73,7 @@ func TestStore_Create(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := news.NewStore(db)
-			createdNews, err := s.Create(context.Background(), tc.news)
+			createdNews, err := s.Create(context.Background(), &tc.news)
 
 			if tc.expectedErr != "" {
 				assert.Error(t, err)
@@ -83,7 +83,7 @@ func TestStore_Create(t *testing.T) {
 				assert.Equal(t, tc.expectedStatusCode, storeErr.HTTPStatusCode())
 			} else {
 				assert.NoError(t, err)
-				assertOnNews(t, tc.news, createdNews)
+				assertOnNews(t, tc.news, *createdNews)
 				err = s.DeleteByID(context.Background(), createdNews.ID)
 				assert.NoError(t, err)
 			}
@@ -139,7 +139,7 @@ func TestStore_FindByID(t *testing.T) {
 				assert.Equal(t, tc.expectedStatusCode, storeErr.HTTPStatusCode())
 			} else {
 				assert.NoError(t, err)
-				assertOnNews(t, *tc.expectedNews, n)
+				assertOnNews(t, *tc.expectedNews, *n)
 			}
 		})
 	}
@@ -180,7 +180,7 @@ func TestStore_FindAll(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, allNews, len(tc.expectedNews))
 		for idx, n := range allNews {
-			assertOnNews(t, *tc.expectedNews[idx], n)
+			assertOnNews(t, *tc.expectedNews[idx], *n)
 		}
 	}
 }
@@ -243,7 +243,7 @@ func TestStore_UpdatedByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := news.NewStore(db)
 
-			err := s.UpdateByID(context.Background(), tc.news.ID, *tc.news)
+			err := s.UpdateByID(context.Background(), tc.news.ID, tc.news)
 
 			if tc.expectedStatus != 0 {
 				assert.Error(t, err)

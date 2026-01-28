@@ -3,7 +3,6 @@ module github.com/anil-vinnakoti/newsapi
 go 1.24.2
 
 require (
-	github.com/codeandlearn1991/newsapi v0.0.0-20250316001501-d6042528f8f1
 	github.com/docker/go-connections v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
@@ -12,6 +11,7 @@ require (
 	github.com/uptrace/bun v1.2.16
 	github.com/uptrace/bun/dialect/pgdialect v1.2.16
 	github.com/uptrace/bun/extra/bundebug v1.2.16
+	go.uber.org/mock v0.6.0
 )
 
 require (

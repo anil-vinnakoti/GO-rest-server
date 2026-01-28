@@ -1,102 +1,63 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/anil-vinnakoti/newsapi/internal/logger"
-	"github.com/anil-vinnakoti/newsapi/internal/store"
+	"github.com/anil-vinnakoti/newsapi/internal/news"
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen -source=handler.go -destination=mocks/handler.go -package=mockshandler
+
+// NewsStorer represents the news store opertions.
 type NewsStorer interface {
-	// Create news from post request body
-	Create(store.News) (store.News, error)
-
-	// FindByID news by its ID
-	FindByID(uuid.UUID) (store.News, error)
-
-	// FindAll returns all news in the store
-	FindAll() ([]store.News, error)
-
-	// DeleteByID deletes a news item by its ID
-	DeleteByID(uuid.UUID) error
-
-	// UpdateByID updates a news resource by its ID
-	UpdateByID(store.News) error
+	// Create news from post request body.
+	Create(context.Context, *news.Record) (*news.Record, error)
+	// FindByID news by its ID.
+	FindByID(context.Context, uuid.UUID) (*news.Record, error)
+	// FindAll returns all news in the store.
+	FindAll(context.Context) ([]*news.Record, error)
+	// DeleteByID deletes a news item by its ID.
+	DeleteByID(context.Context, uuid.UUID) error
+	// UpdateByID updates a news resource by its ID.
+	UpdateByID(context.Context, uuid.UUID, *news.Record) error
 }
 
-func GetAllNews(ns NewsStorer) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.GetLoggerFromContext(r.Context())
-		logger.Info("request recieved")
-
-		news, err := ns.FindAll()
-		if err != nil {
-			logger.Error("failed to fertch all news", "error", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		allNewsResponse := AllNewsResponse{News: news}
-		if err := json.NewEncoder(w).Encode(allNewsResponse); err != nil {
-			logger.Error("failed to write response", "error", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-	}
-}
-
-func GetNewsByID(ns NewsStorer) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.GetLoggerFromContext(r.Context())
-		logger.Info("request recieved")
-
-		newsID := r.PathValue("news_id")
-		newsUUID, err := uuid.Parse(newsID)
-		if err != nil {
-			logger.Error("news id not a valid uuid", "newsID", newsID, "error", err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		news, err := ns.FindByID(newsUUID)
-		if err != nil {
-			logger.Error("news not found", "newsID", newsID)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if err := json.NewEncoder(w).Encode(&news); err != nil {
-			logger.Error("failed to encode", "newsID", newsID, "error", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-}
-
+// PostNews handler.
 func PostNews(ns NewsStorer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.GetLoggerFromContext(r.Context())
-		logger.Info("request recieved")
+		ctx := r.Context()
+		log := logger.GetLoggerFromContext(ctx)
+		log.Info("request received")
 
 		var newsRequestBody NewsPostRequestBody
 		if err := json.NewDecoder(r.Body).Decode(&newsRequestBody); err != nil {
-			logger.Error("failed to decode request", "error", err)
+			log.Error("failed to decode the request", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		n, err := newsRequestBody.Validate()
 		if err != nil {
-			logger.Error("request validation failed", "error", err)
+			log.Error("request validation failed", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			if _, wrErr := w.Write([]byte(err.Error())); wrErr != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 			return
 		}
 
-		if _, err := ns.Create(n); err != nil {
-			logger.Error("error creating news", "error", err)
+		if _, err := ns.Create(ctx, n); err != nil {
+			log.Error("error creating news", "error", err)
+			var dbErr *news.CustomError
+			if errors.As(err, &dbErr) {
+				w.WriteHeader(dbErr.HTTPStatusCode())
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -104,57 +65,130 @@ func PostNews(ns NewsStorer) http.HandlerFunc {
 	}
 }
 
+// GetAllNews handler.
+func GetAllNews(ns NewsStorer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		log := logger.GetLoggerFromContext(ctx)
+		log.Info("request received")
+		n, err := ns.FindAll(ctx)
+		if err != nil {
+			log.Error("failed to fetch all news", "error", err)
+			var dbErr *news.CustomError
+			if errors.As(err, &dbErr) {
+				w.WriteHeader(dbErr.HTTPStatusCode())
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		allNewsResponse := AllNewsResponse{News: n}
+		if err := json.NewEncoder(w).Encode(allNewsResponse); err != nil {
+			log.Error("failed to write response", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// GetNewsByID handler.
+func GetNewsByID(ns NewsStorer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		log := logger.GetLoggerFromContext(ctx)
+		log.Info("request received")
+		newsID := r.PathValue("news_id")
+		newsUUID, err := uuid.Parse(newsID)
+		if err != nil {
+			log.Error("news id not a valid uuid", "newsId", newsID, "error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		n, err := ns.FindByID(ctx, newsUUID)
+		if err != nil {
+			log.Error("news not found", "newsId", newsID)
+			var dbErr *news.CustomError
+			if errors.As(err, &dbErr) {
+				w.WriteHeader(dbErr.HTTPStatusCode())
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(&n); err != nil {
+			log.Error("failed to encode", "newsId", newsID, "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// UpdateNewsByID handler.
 func UpdateNewsByID(ns NewsStorer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.GetLoggerFromContext(r.Context())
-		logger.Info("request recieved")
+		ctx := r.Context()
+		log := logger.GetLoggerFromContext(ctx)
+		log.Info("request received")
 
 		var newsRequestBody NewsPostRequestBody
 		if err := json.NewDecoder(r.Body).Decode(&newsRequestBody); err != nil {
-			logger.Error("failed to decode the request", "error", err)
+			log.Error("failed to decode the request", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		n, err := newsRequestBody.Validate()
 		if err != nil {
-			logger.Info("request validation failed", "error", err)
+			log.Error("request validation failed", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			if _, wrErr := w.Write([]byte(err.Error())); wrErr != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 			return
 		}
 
-		if err := ns.UpdateByID(n); err != nil {
-			logger.Error("error updating news", "error", err)
+		if err := ns.UpdateByID(ctx, n.ID, n); err != nil {
+			log.Error("error updating news", "error", err)
+			var dbErr *news.CustomError
+			if errors.As(err, &dbErr) {
+				w.WriteHeader(dbErr.HTTPStatusCode())
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 }
 
+// DeleteNewsByID handler.
 func DeleteNewsByID(ns NewsStorer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := logger.GetLoggerFromContext(r.Context())
-		logger.Info("request recieved")
-
+		ctx := r.Context()
+		log := logger.GetLoggerFromContext(ctx)
 		newsID := r.PathValue("news_id")
 		newsUUID, err := uuid.Parse(newsID)
 		if err != nil {
-			logger.Error("news id is not a valid uuid", "newsID", newsID, "error", err)
+			log.Error("news id not a valid uuid", "newsId", newsID, "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		if err := ns.DeleteByID(newsUUID); err != nil {
-			logger.Error("news not found", "newsID", newsID, "error", err)
+		if err := ns.DeleteByID(ctx, newsUUID); err != nil {
+			log.Error("news not found", "newsId", newsID, "error", err)
+			var dbErr *news.CustomError
+			if errors.As(err, &dbErr) {
+				w.WriteHeader(dbErr.HTTPStatusCode())
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-
 	}
 }
 
 type AllNewsResponse struct {
-	News []store.News `json:"news"`
+	News []*news.Record `json:"news"`
 }

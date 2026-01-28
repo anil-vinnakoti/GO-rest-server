@@ -19,7 +19,7 @@ func NewStore(db bun.IDB) *Store {
 }
 
 // Create
-func (s Store) Create(ctx context.Context, news Record) (createdNews Record, err error) {
+func (s Store) Create(ctx context.Context, news *Record) (createdNews *Record, err error) {
 	news.ID = uuid.New()
 	err = s.db.NewInsert().Model(&news).Returning("*").Scan(ctx, &createdNews)
 	if err != nil {
@@ -30,7 +30,7 @@ func (s Store) Create(ctx context.Context, news Record) (createdNews Record, err
 }
 
 // FindbyID
-func (s Store) FindByID(ctx context.Context, id uuid.UUID) (news Record, err error) {
+func (s Store) FindByID(ctx context.Context, id uuid.UUID) (news *Record, err error) {
 	err = s.db.NewSelect().Model(&news).Where("id = ?", id).Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -42,7 +42,7 @@ func (s Store) FindByID(ctx context.Context, id uuid.UUID) (news Record, err err
 }
 
 // FindAll
-func (s Store) FindAll(ctx context.Context) (news []Record, err error) {
+func (s Store) FindAll(ctx context.Context) (news []*Record, err error) {
 	err = s.db.NewSelect().Model(&news).Scan(ctx, &news)
 	if err != nil {
 		return news, err
@@ -63,7 +63,7 @@ func (s Store) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
 }
 
 // UpdateByID
-func (s Store) UpdateByID(ctx context.Context, id uuid.UUID, news Record) (err error) {
+func (s Store) UpdateByID(ctx context.Context, id uuid.UUID, news *Record) (err error) {
 	rec, err := s.db.NewUpdate().Model(&news).Where("id = ?", id).Returning("NULL").Exec(ctx)
 	if err != nil {
 		return NewCustomError(err, http.StatusInternalServerError)

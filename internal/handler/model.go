@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/anil-vinnakoti/newsapi/internal/store"
+	"github.com/anil-vinnakoti/newsapi/internal/news"
 	"github.com/google/uuid"
 )
 
@@ -21,7 +21,7 @@ type NewsPostRequestBody struct {
 	Tags      []string  `json:"tags"`
 }
 
-func (n NewsPostRequestBody) Validate() (news store.News, errs error) {
+func (n NewsPostRequestBody) Validate() (record *news.Record, errs error) {
 	if n.Author == "" {
 		errs = errors.Join(errs, fmt.Errorf("author is empty: %s", n.Author))
 	}
@@ -52,16 +52,16 @@ func (n NewsPostRequestBody) Validate() (news store.News, errs error) {
 	}
 
 	if errs != nil {
-		return news, errs
+		return record, errs
 	}
-	return store.News{
+	return &news.Record{
 		ID:        n.ID,
 		Author:    n.Author,
 		Title:     n.Author,
 		Content:   n.Content,
 		Summary:   n.Summary,
 		CreatedAt: t,
-		Source:    *url,
+		Source:    url.String(),
 		Tags:      n.Tags,
 	}, nil
 }
