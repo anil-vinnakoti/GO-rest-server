@@ -41,13 +41,13 @@ func TestMain(m *testing.M) {
 func TestStore_Create(t *testing.T) {
 	testCases := []struct {
 		name               string
-		news               news.Record
+		news               *news.Record
 		expectedErr        string
 		expectedStatusCode int
 	}{
 		{
 			name: "missing author",
-			news: news.Record{
+			news: &news.Record{
 				Title:   "test-title",
 				Summary: "test-summary",
 				Content: "test-content",
@@ -59,7 +59,7 @@ func TestStore_Create(t *testing.T) {
 		},
 		{
 			name: "success",
-			news: news.Record{
+			news: &news.Record{
 				Author:  "test-author",
 				Title:   "test-title",
 				Summary: "test-summary",
@@ -73,7 +73,7 @@ func TestStore_Create(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := news.NewStore(db)
-			createdNews, err := s.Create(context.Background(), &tc.news)
+			createdNews, err := s.Create(context.Background(), tc.news)
 
 			if tc.expectedErr != "" {
 				assert.Error(t, err)
@@ -83,7 +83,7 @@ func TestStore_Create(t *testing.T) {
 				assert.Equal(t, tc.expectedStatusCode, storeErr.HTTPStatusCode())
 			} else {
 				assert.NoError(t, err)
-				assertOnNews(t, tc.news, *createdNews)
+				assertOnNews(t, tc.news, createdNews)
 				err = s.DeleteByID(context.Background(), createdNews.ID)
 				assert.NoError(t, err)
 			}
@@ -139,7 +139,7 @@ func TestStore_FindByID(t *testing.T) {
 				assert.Equal(t, tc.expectedStatusCode, storeErr.HTTPStatusCode())
 			} else {
 				assert.NoError(t, err)
-				assertOnNews(t, *tc.expectedNews, *n)
+				assertOnNews(t, tc.expectedNews, n)
 			}
 		})
 	}
@@ -180,7 +180,7 @@ func TestStore_FindAll(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, allNews, len(tc.expectedNews))
 		for idx, n := range allNews {
-			assertOnNews(t, *tc.expectedNews[idx], *n)
+			assertOnNews(t, tc.expectedNews[idx], n)
 		}
 	}
 }
@@ -257,7 +257,7 @@ func TestStore_UpdatedByID(t *testing.T) {
 	}
 }
 
-func assertOnNews(tb testing.TB, expected, got news.Record) {
+func assertOnNews(tb testing.TB, expected, got *news.Record) {
 	tb.Helper()
 	assert.Equal(tb, expected.Author, got.Author)
 	assert.Equal(tb, expected.Title, got.Title)
